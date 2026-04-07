@@ -585,9 +585,9 @@ function switchManagerTab(tab) {
           'worksheets-mgr': 'bg-teal-500',
           'visualization': 'bg-cyan-600'
         };
-        btn.className = `px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${colors[t] || 'bg-slate-700'} text-white shadow-md flex items-center gap-1.5`;
+        btn.className = `px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${colors[t] || 'bg-slate-700'} text-white shadow-md flex items-center gap-1.5 whitespace-nowrap`;
       } else {
-        btn.className = 'px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-slate-400 border border-slate-200/50 flex items-center gap-1.5';
+        btn.className = 'px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-slate-400 border border-slate-200/50 flex items-center gap-1.5 whitespace-nowrap';
       }
     }
   });

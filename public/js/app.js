@@ -733,7 +733,8 @@ async function submitTest() {
     percentage: score,
     passed: passed,
     attempt_number: attemptNumber,
-    answers: testAnswers
+    answers: testAnswers,
+    completed_at: new Date().toISOString()
   });
   if (error) console.error('Test result save error:', error);
 
@@ -1018,7 +1019,8 @@ async function saveWorksheet(wsType, status) {
       user_id: currentUser.id,
       type: wsType,
       content: contentData,
-      status: status
+      status: status,
+      updated_at: new Date().toISOString()
     }).select().single();
     if (error) { showNotificationCustom('保存に失敗しました', 'error'); console.error(error); return; }
     worksheets.push(data);
@@ -1155,8 +1157,8 @@ function switchPage(page) {
     const btn = document.getElementById(`page-${p}`);
     if (btn) {
       btn.className = p === page
-        ? 'px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-slate-800 text-white shadow-md'
-        : 'px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-slate-400 hover:bg-slate-50 border border-slate-200/50';
+        ? 'px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-slate-800 text-white shadow-md whitespace-nowrap'
+        : 'px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-slate-400 hover:bg-slate-50 border border-slate-200/50 whitespace-nowrap';
     }
   });
 
@@ -1280,7 +1282,8 @@ async function confirmComplete() {
     skill_id: skillId,
     memo,
     image_url: imageUrl,
-    status: 'pending'
+    status: 'pending',
+    completed_at: new Date().toISOString()
   });
 
   btn.disabled = false;

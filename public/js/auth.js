@@ -23,13 +23,13 @@ function switchTab(tab) {
   successMsg.classList.add('hidden');
 
   if (tab === 'login') {
-    loginTab.className = 'flex-1 py-3 text-sm font-bold text-center transition-colors border-b-2 border-indigo-500 text-indigo-600';
-    signupTab.className = 'flex-1 py-3 text-sm font-bold text-center transition-colors border-b-2 border-transparent text-slate-400 hover:text-slate-600';
+    loginTab.className = 'flex-1 py-4 text-sm font-bold text-center transition-all border-b-2 border-teal-500 text-teal-600';
+    signupTab.className = 'flex-1 py-4 text-sm font-bold text-center transition-all border-b-2 border-transparent text-slate-400 hover:text-slate-600';
     nameField.classList.add('hidden');
     submitText.textContent = 'ログイン';
   } else {
-    signupTab.className = 'flex-1 py-3 text-sm font-bold text-center transition-colors border-b-2 border-indigo-500 text-indigo-600';
-    loginTab.className = 'flex-1 py-3 text-sm font-bold text-center transition-colors border-b-2 border-transparent text-slate-400 hover:text-slate-600';
+    signupTab.className = 'flex-1 py-4 text-sm font-bold text-center transition-all border-b-2 border-teal-500 text-teal-600';
+    loginTab.className = 'flex-1 py-4 text-sm font-bold text-center transition-all border-b-2 border-transparent text-slate-400 hover:text-slate-600';
     nameField.classList.remove('hidden');
     submitText.textContent = '新規登録';
   }
