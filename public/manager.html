@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>マネージャー画面 - CS新人育成RPG</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-in { animation: fade-in 0.4s ease-out forwards; }
+    .modal-backdrop { background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); }
+    .status-pending { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #92400e; }
+    .status-approved { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; }
+    .status-rejected { background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/30 text-slate-800">
+
+  <!-- ローディング -->
+  <div id="loading-screen" class="fixed inset-0 bg-gradient-to-br from-slate-50 to-teal-50 z-[100] flex items-center justify-center">
+    <div class="text-center">
+      <div class="w-20 h-20 bg-gradient-to-tr from-teal-500 to-emerald-500 rounded-3xl flex items-center justify-center text-white shadow-2xl mx-auto mb-6 animate-pulse">
+        <i data-lucide="users" width="28"></i>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 bg-teal-400 rounded-full animate-bounce" style="animation-delay:0s"></div>
+        <div class="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style="animation-delay:0.15s"></div>
+        <div class="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style="animation-delay:0.3s"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 承認モーダル -->
+  <div id="review-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in max-h-[85vh] overflow-y-auto">
+      <div class="p-6 border-b border-slate-100 bg-gradient-to-br from-teal-50 to-emerald-50 sticky top-0 z-10">
+        <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+          <div class="w-8 h-8 bg-gradient-to-tr from-teal-500 to-emerald-500 rounded-lg flex items-center justify-center">
+            <i data-lucide="clipboard-check" width="16" class="text-white"></i>
+          </div>
+          クエスト申請レビュー
+        </h3>
+      </div>
+      <div id="review-content" class="p-6 space-y-4"></div>
+      <div class="p-4 border-t border-slate-100 bg-slate-50/50 sticky bottom-0 space-y-3">
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-1.5">フィードバック（任意）</label>
+          <textarea id="review-feedback" rows="2" placeholder="メンバーへのコメント..."
+            class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-300 resize-none transition-all text-sm"></textarea>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="closeReview()" class="flex-1 py-3 rounded-xl font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 transition-all text-sm">
+            閉じる
+          </button>
+          <button onclick="rejectQuest()" class="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-red-500 to-rose-500 shadow-lg hover:brightness-110 transition-all transform active:scale-[0.98] text-sm flex items-center justify-center gap-1.5">
+            <i data-lucide="x-circle" width="16"></i> 差し戻し
+          </button>
+          <button onclick="approveQuest()" class="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-teal-500 to-emerald-500 shadow-lg hover:brightness-110 transition-all transform active:scale-[0.98] text-sm flex items-center justify-center gap-1.5">
+            <i data-lucide="check-circle" width="16"></i> 承認
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ワークシートレビューモーダル -->
+  <div id="worksheet-review-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-in max-h-[85vh] overflow-y-auto">
+      <div class="p-6 border-b border-slate-100 bg-gradient-to-br from-emerald-50 to-teal-50 sticky top-0 z-10">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+            <div class="w-8 h-8 bg-gradient-to-tr from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
+              <i data-lucide="clipboard-edit" width="16" class="text-white"></i>
+            </div>
+            ワークシートレビュー
+          </h3>
+          <button onclick="closeWorksheetReview()" class="p-2 hover:bg-slate-100 rounded-xl transition-all">
+            <i data-lucide="x" width="20"></i>
+          </button>
+        </div>
+        <p id="ws-review-member-name" class="text-sm text-slate-500 mt-1 ml-10"></p>
+      </div>
+      <div id="ws-review-content" class="p-6 space-y-4">
+        <!-- ワークシート内容がJSで挿入される -->
+      </div>
+      <!-- フッターはopenWorksheetReview()でws-review-content内に動的生成されるため、ここは閉じるボタンのみ -->
+      <div class="p-4 border-t border-slate-100 bg-slate-50/50 sticky bottom-0">
+        <button onclick="closeWorksheetReview()" class="w-full py-3 rounded-xl font-bold text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 transition-all text-sm">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ヘッダー -->
+  <header class="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 bg-gradient-to-tr from-teal-500 to-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg">
+          <i data-lucide="users" width="22"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-black text-slate-800">マネージャーダッシュボード</h1>
+          <p class="text-xs text-slate-400">メンバー進捗管理・クエスト承認・テスト結果・ワークシート</p>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <a href="/app.html" class="px-4 py-2.5 bg-gradient-to-r from-teal-50 to-emerald-50 text-teal-700 rounded-xl text-sm font-bold hover:shadow-md transition-all flex items-center gap-1.5 border border-teal-200/50">
+          <i data-lucide="arrow-left" width="14"></i> アプリ
+        </a>
+        <button onclick="handleLogout()" class="px-3 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all">
+          <i data-lucide="log-out" width="14"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8">
+    <!-- 統計 -->
+    <div id="manager-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"></div>
+
+    <!-- タブ -->
+    <div class="flex gap-2 mb-6 overflow-x-auto scrollbar-hide pb-2">
+      <button onclick="switchManagerTab('pending')" id="mtab-pending" class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-amber-500 text-white shadow-md flex items-center gap-1.5 whitespace-nowrap">
+        <i data-lucide="clock" width="14"></i> 承認待ち <span id="pending-count-badge" class="bg-white/30 px-1.5 py-0.5 rounded-full text-[10px] ml-1">0</span>
+      </button>
+      <button onclick="switchManagerTab('members')" id="mtab-members" class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-slate-400 border border-slate-200/50 flex items-center gap-1.5 whitespace-nowrap">
+        <i data-lucide="users" width="14"></i> メンバー一覧
+      </button>
+      <button onclick="switchManagerTab('test-results')" id="mtab-test-results" class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-slate-400 border border-slate-200/50 flex items-center gap-1.5 whitespace-nowrap">
+        <i data-lucide="file-check" width="14"></i> テスト結果
+      </button>
+      <button onclick="switchManagerTab('worksheets-mgr')" id="mtab-worksheets-mgr" class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-slate-400 border border-slate-200/50 flex items-center gap-1.5 whitespace-nowrap">
+        <i data-lucide="clipboard-edit" width="14"></i> ワークシート
+      </button>
+      <button onclick="switchManagerTab('visualization')" id="mtab-visualization" class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-slate-400 border border-slate-200/50 flex items-center gap-1.5 whitespace-nowrap">
+        <i data-lucide="bar-chart-3" width="14"></i> 実力可視化
+      </button>
+      <button onclick="switchManagerTab('history')" id="mtab-history" class="px-5 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-slate-400 border border-slate-200/50 flex items-center gap-1.5 whitespace-nowrap">
+        <i data-lucide="history" width="14"></i> 承認履歴
+      </button>
+    </div>
+
+    <!-- 承認待ちリスト -->
+    <div id="view-pending"></div>
+
+    <!-- メンバー一覧 -->
+    <div id="view-members" class="hidden"></div>
+
+    <!-- テスト結果タブ -->
+    <div id="view-test-results" class="hidden">
+      <div class="bg-white rounded-3xl border border-slate-200/50 shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-slate-100 bg-gradient-to-br from-teal-50 to-cyan-50">
+          <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+            <i data-lucide="file-check" width="20" class="text-teal-500"></i>
+            テスト受験結果一覧
+          </h2>
+          <p class="text-xs text-teal-600/60 mt-1">メンバーのテスト受験結果を確認できます</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-100 bg-slate-50/80">
+                <th class="text-left px-6 py-3 font-bold text-slate-400 text-[10px] uppercase tracking-wider">メンバー</th>
+                <th class="text-left px-6 py-3 font-bold text-slate-400 text-[10px] uppercase tracking-wider">テスト名</th>
+                <th class="text-center px-6 py-3 font-bold text-slate-400 text-[10px] uppercase tracking-wider">スコア</th>
+                <th class="text-center px-6 py-3 font-bold text-slate-400 text-[10px] uppercase tracking-wider">正答率</th>
+                <th class="text-center px-6 py-3 font-bold text-slate-400 text-[10px] uppercase tracking-wider">結果</th>
+                <th class="text-center px-6 py-3 font-bold text-slate-400 text-[10px] uppercase tracking-wider">受験回数</th>
+                <th class="text-center px-6 py-3 font-bold text-slate-400 text-[10px] uppercase tracking-wider">日時</th>
+              </tr>
+            </thead>
+            <tbody id="test-results-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+        <div id="test-results-empty" class="hidden p-12 text-center text-slate-400">
+          <i data-lucide="inbox" width="48" class="mx-auto mb-3 text-slate-300"></i>
+          <p class="font-bold">テスト結果はまだありません</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ワークシートタブ -->
+    <div id="view-worksheets-mgr" class="hidden">
+      <div class="bg-white rounded-3xl border border-slate-200/50 shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-slate-100 bg-gradient-to-br from-emerald-50 to-teal-50">
+          <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+            <i data-lucide="clipboard-edit" width="20" class="text-emerald-500"></i>
+            提出ワークシート一覧
+          </h2>
+          <p class="text-xs text-emerald-600/60 mt-1">メンバーから提出されたワークシートを確認・フィードバックできます</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-100 bg-slate-50/80">
+                <th class="text-left px-6 py-3 font-bold text-slate-400 text-[10px] uppercase tracking-wider">メンバー</th>
+                <th class="text-left px-6 py-3 font-bold text-slate-400 text-[10px] uppercase tracking-wider">種類</th>
+                <th class="text-left px-6 py-3 font-bold text-slate-400 text-[10px] uppercase tracking-wider">関連クエスト</th>
+                <th class="text-center px-6 py-3 font-bold text-slate-400 text-[10px] uppercase tracking-wider">ステータス</th>
+                <th class="text-center px-6 py-3 font-bold text-slate-400 text-[10px] uppercase tracking-wider">提出日</th>
+                <th class="text-center px-6 py-3 font-bold text-slate-400 text-[10px] uppercase tracking-wider">操作</th>
+              </tr>
+            </thead>
+            <tbody id="worksheets-mgr-body" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+        <div id="worksheets-mgr-empty" class="hidden p-12 text-center text-slate-400">
+          <i data-lucide="inbox" width="48" class="mx-auto mb-3 text-slate-300"></i>
+          <p class="font-bold">提出されたワークシートはまだありません</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 実力可視化タブ -->
+    <div id="view-visualization" class="hidden">
+      <!-- メンバー選択 -->
+      <div class="mb-6">
+        <label class="block text-sm font-bold text-slate-700 mb-2">メンバーを選択</label>
+        <select id="viz-member-select" onchange="loadVisualization()" class="px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-300 transition-all bg-white w-full max-w-xs">
+          <option value="">-- 選択してください --</option>
+        </select>
+      </div>
+
+      <div id="viz-content" class="hidden space-y-6">
+        <!-- テスト正答率の推移グラフ -->
+        <div class="bg-white rounded-3xl border border-slate-200/50 shadow-sm overflow-hidden">
+          <div class="p-6 border-b border-slate-100">
+            <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
+              <i data-lucide="trending-up" width="20" class="text-teal-500"></i>
+              テスト正答率の推移
+            </h3>
+          </div>
+          <div class="p-6 flex justify-center overflow-x-auto">
+            <svg id="score-trend-chart" width="600" height="300" viewBox="0 0 600 300"></svg>
+          </div>
+        </div>
+
+        <!-- カテゴリ別達成度レーダーチャート -->
+        <div class="bg-white rounded-3xl border border-slate-200/50 shadow-sm overflow-hidden">
+          <div class="p-6 border-b border-slate-100">
+            <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
+              <i data-lucide="radar" width="20" class="text-emerald-500"></i>
+              カテゴリ別達成度
+            </h3>
+          </div>
+          <div class="p-6 flex justify-center">
+            <svg id="category-radar-chart" width="350" height="350" viewBox="0 0 350 350"></svg>
+          </div>
+        </div>
+
+        <!-- 営業日ベースの進捗タイムライン -->
+        <div class="bg-white rounded-3xl border border-slate-200/50 shadow-sm overflow-hidden">
+          <div class="p-6 border-b border-slate-100">
+            <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
+              <i data-lucide="calendar-days" width="20" class="text-cyan-500"></i>
+              営業日ベース進捗タイムライン
+            </h3>
+          </div>
+          <div id="timeline-content" class="p-6">
+            <div id="timeline-container" class="space-y-4"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="viz-empty" class="p-12 text-center text-slate-400">
+        <i data-lucide="bar-chart-3" width="48" class="mx-auto mb-3 text-slate-300"></i>
+        <p class="font-bold">メンバーを選択すると実力データが表示されます</p>
+      </div>
+    </div>
+
+    <!-- 承認履歴 -->
+    <div id="view-history" class="hidden"></div>
+  </main>
+
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/skill-data.js"></script>
+  <script src="/js/manager.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>
