@@ -26,7 +26,7 @@ async function getProfile(userId) {
 
 async function requireAuth() {
   const user = await getUser();
-  if (!user) { window.location.href = '/index.html'; return null; }
+  if (!user) { window.location.href = './index.html'; return null; }
   return user;
 }
 
@@ -35,7 +35,7 @@ async function requireRole(roles) {
   if (!user) return null;
   const profile = await getProfile(user.id);
   if (!profile || !roles.includes(profile.role)) {
-    window.location.href = '/app.html';
+    window.location.href = './app.html';
     return null;
   }
   return { user, profile };

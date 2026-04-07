@@ -7,7 +7,7 @@ let currentTab = 'login';
 // 既にログイン済みならアプリへ
 (async () => {
   const user = await getUser();
-  if (user) window.location.href = '/app.html';
+  if (user) window.location.href = './app.html';
 })();
 
 function switchTab(tab) {
@@ -71,7 +71,7 @@ async function handleSubmit(e) {
         document.getElementById('success-text').textContent = '確認メールを送信しました。メール内のリンクをクリックしてください。';
         successMsg.classList.remove('hidden');
       } else {
-        window.location.href = '/app.html';
+        window.location.href = './app.html';
       }
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -80,7 +80,7 @@ async function handleSubmit(e) {
       });
 
       if (error) throw error;
-      window.location.href = '/app.html';
+      window.location.href = './app.html';
     }
   } catch (err) {
     document.getElementById('error-text').textContent = err.message === 'Invalid login credentials'
